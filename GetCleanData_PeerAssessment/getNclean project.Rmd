@@ -1,0 +1,258 @@
+---
+title: "CODEBOOK: Averaged Summary Statistics of Human Activity Using Smartphones Dataset"
+author: "DorC"
+date: "October 23, 2015"
+output: 
+  html_document:
+    keep_md: true
+---
+
+<br><br>
+
+# I. Data Background and Raw Data Retriveal 
+Measurements of 561 time and frequency domain features are taken from 30 volunteers (subjects) while they are performing six activities labeled as: *WALKING*, *WALKING_UPSTAIRS*, *WALKING_DOWNSTAIRS*, *SITTING*, *STANDING*, and *LAYING*, with a smartphone (Samsung Galaxy S II) on the waist. For technical details on mechanical sensoring, noise filtering and data gathering criteria, please consult the original report listed under **License**.
+
+The zipped data set is downloadable [here][data]. More details are available at the [UCI Machine Learning Respository][UCI ML Respos].
+
+<br><br>
+
+#####License:
+Use of this dataset in publications must be acknowledged by referencing the following publication:
+
+Davide Anguita, Alessandro Ghio, Luca Oneto, Xavier Parra and Jorge L. Reyes-Ortiz. Human Activity Recognition on Smartphones using a Multiclass Hardware-Friendly Support Vector Machine. International Workshop of Ambient Assisted Living (IWAAL 2012). Vitoria-Gasteiz, Spain. Dec 2012
+
+This dataset is distributed as is and no responsibility implied or explicit can be addressed to the authors or their institutions for its use or misuse. Any commercial use is prohibited.
+
+<br><br>
+
+# II. Data Usage and Variable Descriptions
+Only a subset of measurements and files in the raw zipped data file are considered. The goal is to subset and process the measurements on the 66 features on mean and standard deviation (std) for each subject and each activity to obtain the corresponding 66 averages. 
+
+The list of 66 vaiables on mean and std can be found in section 2.4 and 2.6 below. Briefly, the variables represent the mean and std of linear acceleration and angular velocity in all three axes: X, Y and Z sampled by accelerometer and gyroscope (inside the smartphone) at a constant rate of 50 Hz, in fixed-width sliding windows of 2.56 sec and 50% overlap (128 readings/window).
+
+In addition, three variables: *Subject*, *Activity* and *Subj_Acti* are added during data processing (Section 3 and 5) in order to create the final tidy data set with 66 averaged features. 
+
+<br><br>
+
+# III. Data Processing and Creation of the Tidy Dataset
+<br><br>
+
+### SECTION 0: Load in .zip and list all files of interests
+
+```{r setup, echo=FALSE, results='hide'}
+#Set this .Rmd file to the same directory to the .csv file below. Do not use setwd().
+#Set the root directory for this (and subsequent) code chunks:
+library(knitr)
+opts_knit$set(root.dir = '/Users/easterEgg')
+```
+
+```{r, eval=FALSE}
+## important note: This R-chunck is set to be "eval=FALSE". Please delete "eval=FALSE" if there is no file: "dat.zip", in the current working directory which holds Both this .Rmd file, and the .zip files!
+library(downloader)
+url = "https://s3.amazonaws.com/tripdata/201307-citibike-tripdata.zip"
+filename = "dat.zip"
+if(!file.exists(filename)){ download.file(url, filename, method='curl')}
+```
+
+Only the following listed files are used in the current analysis:
+
+```{r, message=FALSE, cache=TRUE}
+datUnzip = unzip("dat.zip")
+files = list(datUnzip)[[1]][c(1,2,14:16,26:28)]  
+files
+```
+
+<br><br>
+
+### SECTION 1: Row bind the training and the test sets to create one data set, *combDat*
+```{r, cache=TRUE}
+testdat = read.table(files[4])  # from "X_test.txt", dimension: 2947x561 
+traindat = read.table(files[7]) # from "X_train.txt", dimension: 7352x561 
+combDat = rbind(testdat, traindat)
+dim(combDat) 
+```
+
+<br><br>
+
+### SECTION 2: Extract only the measurement data about *mean* and *standard deviation* in *combDat* 
+
+#### 2.1 Get the features file 
+```{r}
+featuresColNames = read.table(files[2]) # from "features.txt", 561x2, 561 features
+head(featuresColNames,1)
+```
+
+#### 2.3 Get the feature/ column indices and names for measurements about *mean* 
+```{r}
+meanIdx = grep(".-mean()",featuresColNames$V2)
+meanFreqIdx = grep(".-meanFreq()",featuresColNames$V2)
+meanOnlyIdx = meanIdx[! meanIdx %in% meanFreqIdx]
+meanColNames = featuresColNames$V2[meanOnlyIdx]
+```
+
+#### 2.4 Extract all columns of combDat corresponding to measurements about *mean* 
+```{r}
+combDatSub_means = combDat[,meanOnlyIdx] # 10299x33, 33 mean features
+names(combDatSub_means) = meanColNames
+head(combDatSub_means,1) 
+```
+The data frame, *combDatSub_means*, contains 10,299 train and test combined observations, with 33 named columns on *mean*.
+
+#### 2.5 Get the feature/ column indices and names for measurements about *std*
+```{r}
+stdIdx = grep(".-std()",featuresColNames$V2)
+stdColNames = featuresColNames$V2[stdIdx]
+```
+
+#### 2.6 Extract all columns of *combDat* corresponding to measurements about *std*
+```{r}
+combDatSub_std = combDat[,stdIdx]  # 10299x33, 33 std features
+names(combDatSub_std) = stdColNames
+head(combDatSub_std,1) 
+```
+
+The data frame, *combDatSub_std*, contains 10,299 train and test combined observations, with 33 named columns on *std*.
+
+#### 2.7 Combine the two data frames into one: *meanstdData*
+```{r}
+meanstdData = cbind(combDatSub_means, combDatSub_std) # 10299x33, 66 features
+```
+
+The data frame, *meanstdData*, contains 10,299 train and test combined observations, with 66 named columns on *mean* and *std*.
+
+<br><br>
+
+### SECTION 3: Create the data frame, *meanstdData_subj_actiY*, by appeneding meanstdData to two columns: *Subject* and *Activity*
+
+#### 3.1 Get the numeric subject labels
+```{r, cache=TRUE}
+subject_test = read.table(files[3]) # from "subject_test.txt", 2947x1
+subject_train = read.table(files[6]) # from "subject_train.txt", 7352x1
+```
+
+#### 3.2 Get the numeric activity labels 
+```{r}
+y_test = read.table(files[5]) # from "y_test.txt", 2947x1
+y_train = read.table(files[8]) # from "y_train.txt", 7352x1
+```
+
+#### 3.3 Row bind *subject_test* & *train* and *y_test* & *train*, respectively, and name the corresponding two columns: *Subject* and *Activity*.
+```{r}
+subject_testTrain = rbind(subject_test, subject_train) # 10299x1
+names(subject_testTrain) = "Subject" 
+y_testTrain = rbind(y_test, y_train) # 10299x1
+names(y_testTrain) = "Activity"      
+```
+
+#### 3.4 Column bind the data frame *meanstdData*, and the two columns: *Subject* and *Activity*
+```{r}
+meanstdData_subj_actiY = cbind(meanstdData, subject_testTrain, y_testTrain) # 10299x68
+```
+
+The following subsetting of the whole data frame, *meanstdData_subj_actiY*, is for demonstration purposes.
+As expected, the first column is the first measure of *mean*, the 34th columns is the first measure of *std*, and the final two columns are the newly appended *Subject* and *Activity*:
+```{r}
+head(meanstdData_subj_actiY[,c(1,34,67,68)],3)  
+```
+
+<br><br>
+
+### SECTION 4: In *meanstdData_subj_actiY*, modify subject indices and substitute numerical activity identifiers into meaningful descriptive strings 
+
+#### 4.1 Append a leading zero to subjects indexed 1-9 in the column *Subject*, for more optimal display in section6
+
+Different numbers of observations are tabulated for all 30 subjects:
+```{r}
+table(meanstdData_subj_actiY$Subject) 
+```
+
+Convert 1-9 to 01-09:
+```{r, message=FALSE}
+library(dplyr)
+meanstdData_subj_actiY_after10 = meanstdData_subj_actiY %>% filter(Subject >= 10)
+meanstdData_subj_actiY_before10 = meanstdData_subj_actiY %>% filter(Subject < 10) %>%  mutate(Subject = paste0(0,Subject)) 
+meanstdData_subj_actiY = rbind(meanstdData_subj_actiY_before10,meanstdData_subj_actiY_after10)
+```
+
+Leading zero are appended successfully:
+```{r}
+table(meanstdData_subj_actiY$Subject) 
+```
+
+#### 4.2 Get meaningful activity labels 
+```{r}
+actiLabels = read.table(files[1]) # from "activity_labels.txt"
+```
+
+There are six activity labels to match the six numerical values in the column *Activity*
+```{r}
+actiLabels[,2] 
+str(unique(meanstdData_subj_actiY$Activity))
+```
+
+#### 4.3 Substitute numerical identifier by meaningful strings in the column *Activity*
+
+Convert from class integer to factor for string assignment:
+```{r}
+meanstdData_subj_actiY$Activity = as.factor(meanstdData_subj_actiY$Activity) 
+levels(meanstdData_subj_actiY$Activity) <- c("WALKING","WALKING_UPSTAIRS","WALKING_DOWNSTAIRS","SITTING","STANDING","LAYING" )
+```
+
+Activity labels are assigned successfully:
+```{r}
+table(meanstdData_subj_actiY$Activity)  
+```
+
+The columns: *Subject* and *Activity* are successfully modified in *meanstdData_subj_actiY*:
+```{r}
+head(meanstdData_subj_actiY[,c(1,34,67,68)],3)  
+```
+
+<br><br>
+
+### SECTION 5: Create a new column: *Subj_Acti*
+```{r}
+meanstdData_subj_actiY = meanstdData_subj_actiY %>% mutate(Subj_Acti = paste0(Subject, sep="_", Activity))
+```
+
+Note, the final column is now *Subj_Acti*:
+```{r}
+meanstdData_subj_actiY[1,c(1,34,67:69)]  
+```
+
+There are 180 unique *Subj_Acti* combinations:
+
+```{r}
+str(unique(meanstdData_subj_actiY$Subj_Acti)) 
+```
+
+<br><br>
+
+### SECTION 6: Create a tidy data set with the average of each features by each subject and each activity
+
+```{r}
+avgsBy_SubjActi = meanstdData_subj_actiY %>% select(c(1:66,69)) %>% group_by(Subj_Acti) %>% 
+                                             summarise_each(funs(mean)) %>% arrange(Subj_Acti)
+```
+
+Note, *Subj_Acti* is at the first column:
+```{r}
+options(dplyr.print_max = Inf) # set dplyr to show all rows instead of only top 10
+head(avgsBy_SubjActi[,c(1,2,35)],7) 
+```
+
+The data frame, *avgsBy_SubjActi*, contains 180 unique *Subj_Acti* combinations and their corresponding averaged 66 features:
+```{r}
+dim(avgsBy_SubjActi) 
+```
+
+<br><br>
+
+### SECTION 7: Output the data frame, *avgsBy_SubjActi*, as the tidy data set in txt format in the current working directory
+```{r}
+write.table(avgsBy_SubjActi, "avgsBy_SubjActi.txt", row.name=FALSE) 
+```
+
+[data]:https://d396qusza40orc.cloudfront.net/getdata%2Fprojectfiles%2FUCI%20HAR%20Dataset.zip
+[UCI ML Respos]:http://archive.ics.uci.edu/ml/datasets/Human+Activity+Recognition+Using+Smartphones
+

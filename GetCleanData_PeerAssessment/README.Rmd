@@ -1,0 +1,29 @@
+---
+title: "Getting and Cleaning Data: Course Project"
+author: "DorC"
+date: "October 24, 2015"
+output: html_document
+---
+
+## Introduction
+
+This reporsitory contains assignments to satisfy the project requirements in the Coursera course "Getting and Cleaning Data" provided by the Johns Hopkins Bloomberg School of Public Health. The purpose and goal of this project are to collect, work with, and clean a data set in order to obtain a tidy data set for further analyses. 
+
+## Project Background and Raw Data
+
+The raw data used in this course project is publicized in *Human Activity Recognition on Smartphones using a Multiclass Hardware-Friendly Support Vector Machine. International Workshop of Ambient Assisted Living (IWAAL 2012)*. The data set contains measurements of human activities: *WALKING*, *WALKING_UPSTAIRS*, *WALKING_DOWNSTAIRS*, *SITTING*, *STANDING*, and *LAYING*  (at ‘features.txt’) collected by a smartphone (Samsung Galaxy S II) on the waists of 30 volunteers. 
+
+The measurement dataset, as given, was randomly partitioned into a testing and training sets at: *X_test/train.txt*, which are recombined in the current analysis to yield a total of 10,299 rows (observations) with 561 features. Only features on mean and standard deviation (std) are of interests hence, a measurement subset constituting 33 mean and 33 std features is made with appropriate column names. Each 66-feature long observation is matched to its corresponding subject identifier and activity identifier/label provided by four additional files: *subject_test/train.txt*, *y_test/train.txt* and *activity_labels.txt*, respectively. Subsequently, the final column: *Subj_Acti* of 180 unique subject and activity combinations/labels (30 subjects x 6 activities), is added to the dual-labeled dataset. The 66 averaged mean and std are then calculated by aggregating each 180 unique labels in *Subj_Acti*. The final tidy data set contains records for: 180 *Subj_Acti* x 66 averages. 
+
+The raw data set is downloadable [here][dat_download] and is maintained at the [UCI Machine Learning Respository][UCI ML Respos].
+
+## Assignment Scripts 
+
+1. A tidy data set: avgsBy_SubjActi.txt 
+2. A code book: CodeBook.Rmd (and .md)
+3. An R script: run_analysis.R
+4. The current README.Rmd
+* Files unrequired: Two additional HTML files created directly from CodeBook.Rmd and README.Rmd in RStudio
+
+[dat_download]:https://d396qusza40orc.cloudfront.net/getdata%2Fprojectfiles%2FUCI%20HAR%20Dataset.zip
+[UCI ML Respos]:http://archive.ics.uci.edu/ml/datasets/Human+Activity+Recognition+Using+Smartphones
